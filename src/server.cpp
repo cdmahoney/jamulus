@@ -224,6 +224,8 @@ CServer::CServer ( const int          iNewMaxNumChan,
                    const QString&     strServerPublicIP,
                    const QString&     strNewWelcomeMessage,
                    const QString&     strRecordingDirName,
+                   const QString&     strMqttHostPub,
+                   const quint16      iMqttPortPub,
                    const bool         bNDisconnectAllClientsOnQuit,
                    const bool         bNUseDoubleSystemFrameSize,
                    const bool         bNUseMultithreading,
@@ -242,6 +244,7 @@ CServer::CServer ( const int          iNewMaxNumChan,
     ServerListManager ( iPortNumber, strCentralServer, strServerInfo, strServerPublicIP, strServerListFilter, iNewMaxNumChan, &ConnLessProtocol ),
     JamController ( this ),
     bDisableRecording ( bDisableRecording ),
+    MqttController ( nullptr ),
     bAutoRunMinimized ( false ),
     bDelayPan ( bNDelayPan ),
     eLicenceType ( eNLicenceType ),
@@ -475,9 +478,113 @@ CServer::CServer ( const int          iNewMaxNumChan,
 
     connectChannelSignalsToServerSlots<MAX_NUM_CHANNELS>();
 
+    if ( !strMqttHostPub.isEmpty() )
+    {
+        MqttController = new mqtt::CMqttController ( this, strMqttHostPub, iMqttPortPub );
+
+        QObject::connect ( &ConnLessProtocol, &CProtocol::CLPingReceived, MqttController, &mqtt::CMqttController::OnCLPingReceived );
+
+        QObject::connect ( this,
+                           &CServer::Started,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnStarted );
+
+        QObject::connect ( this,
+                           &CServer::Stopped,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnStopped );
+
+        QObject::connect ( this,
+                           &CServer::ClientDisconnected,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnClientDisconnected );
+
+        QObject::connect ( this,
+                           &CServer::SvrRegStatusChanged,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnSvrRegStatusChanged );
+
+        // QObject::connect ( this, &CServer::AudioFrame,
+        //     /*&*/MqttController, &mqtt::CMqttController::OnAudioFrame );
+
+        QObject::connect ( this,
+                           &CServer::CLVersionAndOSReceived,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnCLVersionAndOSReceived );
+
+        QObject::connect ( this,
+                           &CServer::RestartRecorder,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnRestartRecorder );
+
+        QObject::connect ( this,
+                           &CServer::StopRecorder,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnStopRecorder );
+
+        QObject::connect ( this,
+                           &CServer::RecordingSessionStarted,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnRecordingSessionStarted );
+
+        QObject::connect ( this,
+                           &CServer::EndRecorderThread,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnEndRecorderThread );
+
+        // QObject::connect ( this, &CServer::CLConnClientsListMesReceived,
+        //     /*&*/MqttController, &mqtt::CMqttController::CLConnClientsListMesReceived );
+
+        // Socket
+        qRegisterMetaType<CVector<CChannelInfo>> ( "CVector<CChannelInfo>" );
+        QObject::connect ( this,
+                           &CServer::ChanInfoHasChanged,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnChanInfoHasChanged );
+
+        QObject::connect ( this,
+                           &CServer::ProtcolMessageReceived,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnProtcolMessageReceived );
+
+        QObject::connect ( this,
+                           &CServer::ProtcolCLMessageReceived,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnProtcolCLMessageReceived );
+        // QObject::connect ( (CSocket*)&Socket, &CSocket::ProtcolMessageReceived,
+        //     /*&*/MqttController, &mqtt::CMqttController::OnProtcolMessageReceived );
+
+        // QObject::connect ( (CSocket*)&Socket, &CSocket::ProtcolCLMessageReceived,
+        //     /*&*/MqttController, &mqtt::CMqttController::OnProtcolCLMessageReceived );
+
+        QObject::connect ( this,
+                           &CServer::NewConnection,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnNewConnection );
+
+        QObject::connect ( this,
+                           &CServer::ServerFull,
+                           /*&*/ MqttController,
+                           &mqtt::CMqttController::OnServerFull );
+        // QObject::connect ( (CSocket*)&Socket, static_cast<void (CSocket::*) ( int, CHostAddress )> ( &CSocket::NewConnection ),
+        //     /*&*/MqttController, &mqtt::CMqttController::OnNewConnection );
+
+        // QObject::connect ( (CSocket*)&Socket, &CSocket::ServerFull,
+        //     /*&*/MqttController, &mqtt::CMqttController::OnServerFull );
+
+        // qRegisterMetaType<CServer> ( "CServer" );
+        // qRegisterMetaType<CServerListManager> ( "CServerListManager" );
+        QObject::connect ( this, &CServer::ServerStarted, MqttController, &mqtt::CMqttController::OnServerStarted );
+
+        QObject::connect ( this, &CServer::ServerStopped, MqttController, &mqtt::CMqttController::OnServerStopped );
+    }
+
     // start the socket (it is important to start the socket after all
     // initializations and connections)
     Socket.Start();
+
+    // Emit ServerStarted (mqtt)
+    emit ServerStarted ( this, &ServerListManager );
 }
 
 template<unsigned int slotId>
@@ -524,6 +631,9 @@ void CServer::CreateAndSendJitBufMessage ( const int iCurChanID, const int iNNum
 
 CServer::~CServer()
 {
+    // Emit ServerStopped (mqtt)
+    emit ServerStopped ( this, &ServerListManager );
+
     for ( int i = 0; i < iMaxNumChannels; i++ )
     {
         // free audio encoders and decoders
@@ -625,6 +735,10 @@ void CServer::OnNewConnection ( int iChID, CHostAddress RecHostAddr )
 
     // logging of new connected channel
     Logging.AddNewConnection ( RecHostAddr.InetAddr, GetNumberOfConnectedClients() );
+
+    // Unlock then emit NewConnection (mqtt)
+    locker.unlock();
+    emit NewConnection ( iChID, RecHostAddr );
 }
 
 void CServer::OnServerFull ( CHostAddress RecHostAddr )
@@ -633,6 +747,9 @@ void CServer::OnServerFull ( CHostAddress RecHostAddr )
 
     // inform the calling client that no channel is free
     ConnLessProtocol.CreateCLServerFullMes ( RecHostAddr );
+
+    // mqtt
+    emit ServerFull ( RecHostAddr );
 }
 
 void CServer::OnSendCLProtMessage ( CHostAddress InetAddr, CVector<uint8_t> vecMessage )
@@ -1038,10 +1155,12 @@ void CServer::DecodeReceiveData ( const int iChanCnt, const int iNumClients )
             // and emit the client disconnected signal
             if ( eGetStat == GS_CHAN_NOW_DISCONNECTED )
             {
-                if ( JamController.GetRecordingEnabled() )
-                {
-                    emit ClientDisconnected ( iCurChanID ); // TODO do this outside the mutex lock?
-                }
+                // Always emit ClientDisconnected (mqtt)
+                emit ClientDisconnected ( iCurChanID ); // TODO do this outside the mutex lock?
+                // if ( JamController.GetRecordingEnabled() )
+                // {
+                //     emit ClientDisconnected ( iCurChanID ); // TODO do this outside the mutex lock?
+                // }
 
                 // note that no mutex is needed for this shared resource since it is not a
                 // read-modify-write operation but an atomic write and also each thread can
@@ -1390,6 +1509,11 @@ void CServer::CreateAndSendChanListForAllConChannels()
     {
         WriteHTMLChannelList();
     }
+
+    if ( MqttController && MqttController->IsEnabled() )
+    {
+        emit ChanInfoHasChanged ( vecChanInfo );
+    }
 }
 
 void CServer::CreateAndSendChanListForThisChan ( const int iCurChanID )
@@ -1511,6 +1635,10 @@ void CServer::OnProtcolCLMessageReceived ( int iRecID, CVector<uint8_t> vecbyMes
 
     // connection less messages are always processed
     ConnLessProtocol.ParseConnectionLessMessageBody ( vecbyMesBodyData, iRecID, RecHostAddr );
+
+    // Mqtt
+    locker.unlock();
+    emit ProtcolCLMessageReceived ( iRecID, vecbyMesBodyData, RecHostAddr );
 }
 
 void CServer::OnProtcolMessageReceived ( int iRecCounter, int iRecID, CVector<uint8_t> vecbyMesBodyData, CHostAddress RecHostAddr )
@@ -1525,6 +1653,10 @@ void CServer::OnProtcolMessageReceived ( int iRecCounter, int iRecID, CVector<ui
     {
         vecChannels[iCurChanID].PutProtcolData ( iRecCounter, iRecID, vecbyMesBodyData, RecHostAddr );
     }
+
+    // Mqtt
+    locker.unlock();
+    emit ProtcolMessageReceived ( iRecCounter, iRecID, vecbyMesBodyData, RecHostAddr );
 }
 
 bool CServer::PutAudioData ( const CVector<uint8_t>& vecbyRecBuf, const int iNumBytesRead, const CHostAddress& HostAdr, int& iCurChanID )

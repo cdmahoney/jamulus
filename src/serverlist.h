@@ -166,6 +166,9 @@ public:
 
     QLocale::Country GetServerCountry() { return ServerList[0].eCountry; }
 
+    // Make full server list entry available (mqtt
+    const CServerListEntry* GetServerInfo() const { return &ServerList[0]; }
+
     ESvrRegStatus GetSvrRegStatus() { return eSvrRegStatus; }
 
     void StoreRegistrationResult ( ESvrRegResult eStatus );

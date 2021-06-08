@@ -89,6 +89,8 @@ int main ( int argc, char** argv )
     QString      strServerListFilter         = "";
     QString      strWelcomeMessage           = "";
     QString      strClientName               = "";
+    QString      strMqttHostPub              = "";
+    quint16      iMqttPortPub                = DEFAULT_MQTTPORTPUB_NUMBER;
 
 #if !defined( HEADLESS ) && defined( _WIN32 )
     if ( AttachConsole ( ATTACH_PARENT_PROCESS ) )
@@ -308,6 +310,29 @@ int main ( int argc, char** argv )
             bDisableRecording = true;
             qInfo() << "- recording will not take place until enabled";
             CommandLineOptions << "--norecord";
+            continue;
+        }
+
+        // MQTT host for publishing --------------------------------------------
+        if ( GetStringArgument ( argc,
+                                 argv,
+                                 i,
+                                 "--mqtthostpub", // no short form
+                                 "--mqtthostpub",
+                                 strArgument ) )
+        {
+            strMqttHostPub = strArgument;
+            qInfo() << "- mqtt host for publish: " << strMqttHostPub << endl;
+            CommandLineOptions << "--mqtthostpub";
+            continue;
+        }
+
+        // MQTT port for publishing --------------------------------------------
+        if ( GetNumericArgument ( argc, argv, i, "--mqttportpub", "--mqttportpub", 0, 65535, rDbleArgument ) )
+        {
+            iMqttPortPub = static_cast<quint16> ( rDbleArgument );
+            qInfo() << qUtf8Printable ( QString ( "- mqtt port for publisg: %1" ).arg ( iMqttPortPub ) );
+            CommandLineOptions << "--mqttportpub";
             continue;
         }
 
@@ -651,6 +676,8 @@ int main ( int argc, char** argv )
                              strServerListFilter,
                              strWelcomeMessage,
                              strRecordingDirName,
+                             strMqttHostPub,
+                             iMqttPortPub,
                              bDisconnectAllClientsOnQuit,
                              bUseDoubleSystemFrameSize,
                              bUseMultithreading,
@@ -753,6 +780,8 @@ QString UsageArguments ( char** argv )
            "  -l, --log             enable logging, set file name\n"
            "  -L, --licence         show an agreement window before users can connect\n"
            "  -m, --htmlstatus      enable HTML status file, set file name\n"
+           "      --mqtthostpub     mqtt host for publishing state information\n"
+           "      --mqttportpub     mqtt port for publishing state information. Default 1883\n"
            "  -o, --serverinfo      infos of this server in the format:\n"
            "                        [name];[city];[country as QLocale ID]\n"
            "  -P, --delaypan        start with delay panning enabled\n"

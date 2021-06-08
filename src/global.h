@@ -275,6 +275,8 @@ LED bar:      lbr
 #define _MINSHORT     ( -32768 )
 #define INVALID_INDEX -1 // define invalid index as a negative value (a valid index must always be >= 0)
 
+#define DEFAULT_MQTTPORTPUB_NUMBER 1883
+
 #if HAVE_STDINT_H
 #    include <stdint.h>
 #elif HAVE_INTTYPES_H

@@ -26,7 +26,8 @@ CONFIG += qt \
 
 QT += network \
     xml \
-    concurrent
+    concurrent \
+    mqtt
 
 contains(CONFIG, "headless") {
     message(Headless mode activated.)
@@ -415,7 +416,11 @@ HEADERS += src/buffer.h \
     src/recorder/jamrecorder.h \
     src/recorder/creaperproject.h \
     src/recorder/cwavestream.h \
-    src/signalhandler.h
+    src/signalhandler.h \
+    src/mqtt/mqttconnectionjamulus.h \
+    src/mqtt/mqttconnection.h \
+    src/mqtt/mqttconnectionrequest.h \
+    src/mqtt/mqttcontroller.h
 
 HEADERS_GUI = src/audiomixerboard.h \
     src/chatdlg.h \
@@ -515,7 +520,11 @@ SOURCES += src/buffer.cpp \
     src/util.cpp \
     src/recorder/jamrecorder.cpp \
     src/recorder/creaperproject.cpp \
-    src/recorder/cwavestream.cpp
+    src/recorder/cwavestream.cpp \
+    src/mqtt/mqttconnectionjamulus.cpp \
+    src/mqtt/mqttconnection.cpp \
+    src/mqtt/mqttconnectionrequest.cpp \
+    src/mqtt/mqttcontroller.cpp
 
 SOURCES_GUI = src/audiomixerboard.cpp \
     src/chatdlg.cpp \

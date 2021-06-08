@@ -45,6 +45,7 @@
 #include "serverlogging.h"
 #include "serverlist.h"
 #include "recorder/jamcontroller.h"
+#include "mqtt/mqttcontroller.h"
 
 #include "threadpool.h"
 
@@ -164,6 +165,8 @@ public:
               const QString&     strServerPublicIP,
               const QString&     strNewWelcomeMessage,
               const QString&     strRecordingDirName,
+              const QString&     strMqttHostPub,
+              const quint16      iMqttPortPub,
               const bool         bNDisconnectAllClientsOnQuit,
               const bool         bNUseDoubleSystemFrameSize,
               const bool         bNUseMultithreading,
@@ -248,14 +251,18 @@ public:
 
     int GetClientNumAudioChannels ( const int iChanNum ) { return vecChannels[iChanNum].GetNumAudioChannels(); }
 
+    // Was protected (mqtt)
+    CVector<CChannelInfo> CreateChannelList();
+
 protected:
     // access functions for actual channels
     bool IsConnected ( const int iChanNum ) { return vecChannels[iChanNum].IsConnected(); }
 
-    int                   GetFreeChan();
-    int                   FindChannel ( const CHostAddress& CheckAddr );
-    int                   GetNumberOfConnectedClients();
-    CVector<CChannelInfo> CreateChannelList();
+    int GetFreeChan();
+    int FindChannel ( const CHostAddress& CheckAddr );
+    int GetNumberOfConnectedClients();
+    // Made public (mqtt)
+    // CVector<CChannelInfo> CreateChannelList();
 
     virtual void CreateAndSendChanListForAllConChannels();
     virtual void CreateAndSendChanListForThisChan ( const int iCurChanID );
@@ -361,6 +368,9 @@ protected:
     recorder::CJamController JamController;
     bool                     bDisableRecording;
 
+    // mqtt
+    mqtt::CMqttController* MqttController;
+
     // GUI settings
     bool bAutoRunMinimized;
 
@@ -394,6 +404,21 @@ signals:
     void StopRecorder();
     void RecordingSessionStarted ( QString sessionDir );
     void EndRecorderThread();
+
+    // Channel events (mqtt)
+    void ChanInfoHasChanged ( CVector<CChannelInfo> vecChanInfo );
+
+    // Server life cycle events (mqtt)
+    void NewConnection ( int iChID, CHostAddress RecHostAddr );
+    void ServerFull ( CHostAddress RecHostAddr );
+    void ProtcolMessageReceived ( int iRecCounter, int iRecID, CVector<uint8_t> vecbyMesBodyData, CHostAddress HostAdr );
+
+    void ProtcolCLMessageReceived ( int iRecID, CVector<uint8_t> vecbyMesBodyData, CHostAddress HostAdr );
+    // Protocol events - signal linked to protocol event (mqtt)
+    // void CLConnClientsListMesReceived ( CHostAddress          InetAddr,
+    //                                     CVector<CChannelInfo> vecChanInfo );
+    void ServerStarted ( CServer* server, CServerListManager* serverListManager );
+    void ServerStopped ( CServer* server, CServerListManager* serverListManager );
 
 public slots:
     void OnTimer();

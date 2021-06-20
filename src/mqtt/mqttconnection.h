@@ -77,6 +77,9 @@ public slots:
 
     // Protocol events - signal linked to server event
     void OnCLConnClientsListMesReceived ( CHostAddress InetAddr, CVector<CChannelInfo> vecChanInfo );
+
+    void OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg );
+    void OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState state );
 };
 
 } // namespace mqtt

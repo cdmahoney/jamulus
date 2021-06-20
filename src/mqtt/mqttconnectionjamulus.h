@@ -58,6 +58,8 @@ protected:
     QMqttTopicName   GetTopicName ( const QString& prefix, const QString& suffix ) const;
     QMqttTopicFilter GetTopicFilter ( const QString& prefix, const QString& suffix ) const;
 
+    QJsonDocument ParseJsonMessage ( QJsonObject& jsonObject, QMqttMessage message ) const;
+
     static void    HostAddressToJsonObject ( QJsonObject& jsonObject, CHostAddress hostAddress );
     static void    ChannelInfoVectorToJsonArray ( QJsonArray& jsonArray, CVector<CChannelInfo> vecChanInfo );
     static QString SkillLevelToString ( ESkillLevel skillLevel );

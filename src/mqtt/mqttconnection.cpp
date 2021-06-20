@@ -31,6 +31,7 @@
 #include <QTranslator>
 
 #include "protocol.h"
+#include "server.h"
 #include "serverlist.h"
 #include "util.h"
 
@@ -151,6 +152,81 @@ QString CMqttConnection::GetType() const
 void CMqttConnection::OnMqttConnectedInternal()
 {
     // _WriteString ( "CMqttConnection::OnMqttConnectedInternal" );
+    QMqttTopicFilter topicFilter = GetTopicFilter ( "jamulus", "request/#" );
+    Subscribe ( topicFilter, &CMqttConnection::OnMqttSubscriptionMessageReceived, &CMqttConnection::OnMqttSubscriptionStateChanged );
+}
+
+void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg )
+{
+    // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - Topic: " + msg.topic().name() );
+    // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - Payload: " + msg.payload() );
+
+    QMqttTopicName topic ( msg.topic() );
+
+    QMqttTopicFilter topicFilterGetConfiguration = GetTopicFilter ( "jamulus", "request/configuration/get/#" );
+    if ( topicFilterGetConfiguration.match ( topic ) )
+    {
+        // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - topic is configuration/get!" );
+        if ( Server && ServerListManager )
+        {
+            const CServerListEntry* serverInfo = ServerListManager->GetServerInfo();
+
+            QJsonObject jsonObject;
+            // CServerListEntry
+            jsonObject["upTime"] = serverInfo->RegisterTime.elapsed();
+
+            // CServerInfo
+            QJsonObject jsonObjectInternetAddress;
+            CMqttConnectionJamulus::HostAddressToJsonObject ( jsonObjectInternetAddress, serverInfo->HostAddr );
+            jsonObject["internetAddress"] = jsonObjectInternetAddress;
+
+            QJsonObject jsonObjectInternalAddress;
+            CMqttConnectionJamulus::HostAddressToJsonObject ( jsonObjectInternalAddress, serverInfo->LHostAddr );
+            jsonObject["internalAddress"] = jsonObjectInternalAddress;
+
+            // CServerCoreInfo
+            jsonObject["name"]             = serverInfo->strName;
+            jsonObject["city"]             = serverInfo->strCity;
+            jsonObject["country"]          = QLocale::countryToString ( serverInfo->eCountry );
+            jsonObject["countryCode"]      = serverInfo->eCountry;
+            jsonObject["maxNumberClients"] = serverInfo->iMaxNumClients;
+            jsonObject["permanent"]        = serverInfo->bPermanentOnline;
+
+            // Recording
+            QJsonObject jsonObjectRecording;
+            jsonObjectRecording["initialised"]  = Server->GetRecorderInitialised();
+            jsonObjectRecording["errorMessage"] = Server->GetRecorderErrMsg();
+            jsonObjectRecording["enabled"]      = Server->GetRecordingEnabled();
+            jsonObjectRecording["directory"]    = Server->GetRecordingDir();
+            jsonObject["recording"]             = jsonObjectRecording;
+
+            QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
+            PublishMessage ( topicName, jsonObject );
+        }
+    }
+
+    QMqttTopicFilter topicFilterGetConnections = GetTopicFilter ( "jamulus", "request/connections/get/#" );
+    if ( topicFilterGetConnections.match ( topic ) )
+    {
+        // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - topic is connections/get!" );
+        if ( Server )
+        {
+            CVector<CChannelInfo> vecChanInfo ( Server->CreateChannelList() );
+
+            QJsonObject jsonObject;
+            QJsonArray  channelArray;
+            ChannelInfoVectorToJsonArray ( channelArray, vecChanInfo );
+            jsonObject["connections"] = channelArray;
+
+            QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
+            PublishMessage ( topicName, jsonObject );
+        }
+    }
+}
+
+void CMqttConnection::OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState /*state*/ )
+{
+    // _WriteString ( "CMqttConnection::OnMqttSubscriptionStateChanged: " + QString::number ( state ) );
 }
 
 void CMqttConnection::OnClientDisconnected ( const int iChID )

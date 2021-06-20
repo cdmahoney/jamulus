@@ -226,6 +226,8 @@ CServer::CServer ( const int          iNewMaxNumChan,
                    const QString&     strRecordingDirName,
                    const QString&     strMqttHostPub,
                    const quint16      iMqttPortPub,
+                   const QString&     strMqttHostSub,
+                   const quint16      iMqttPortSub,
                    const bool         bNDisconnectAllClientsOnQuit,
                    const bool         bNUseDoubleSystemFrameSize,
                    const bool         bNUseMultithreading,
@@ -480,7 +482,8 @@ CServer::CServer ( const int          iNewMaxNumChan,
 
     if ( !strMqttHostPub.isEmpty() )
     {
-        MqttController = new mqtt::CMqttController ( this, strMqttHostPub, iMqttPortPub );
+        MqttController = new mqtt::CMqttController ( this, strMqttHostPub, iMqttPortPub, strMqttHostSub, iMqttPortSub );
+        // MqttController = new mqtt::CMqttController ( this, strMqttHostPub, iMqttPortPub );
 
         QObject::connect ( &ConnLessProtocol, &CProtocol::CLPingReceived, MqttController, &mqtt::CMqttController::OnCLPingReceived );
 

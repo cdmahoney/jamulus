@@ -276,6 +276,7 @@ LED bar:      lbr
 #define INVALID_INDEX -1 // define invalid index as a negative value (a valid index must always be >= 0)
 
 #define DEFAULT_MQTTPORTPUB_NUMBER 1883
+#define DEFAULT_MQTTPORTSUB_NUMBER 1883
 
 #if HAVE_STDINT_H
 #    include <stdint.h>

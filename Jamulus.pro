@@ -419,7 +419,7 @@ HEADERS += src/buffer.h \
     src/signalhandler.h \
     src/mqtt/mqttconnectionjamulus.h \
     src/mqtt/mqttconnection.h \
-    src/mqtt/mqttconnectionrequest.h \
+    src/mqtt/mqttconnectioncommand.h \
     src/mqtt/mqttcontroller.h
 
 HEADERS_GUI = src/audiomixerboard.h \
@@ -523,7 +523,7 @@ SOURCES += src/buffer.cpp \
     src/recorder/cwavestream.cpp \
     src/mqtt/mqttconnectionjamulus.cpp \
     src/mqtt/mqttconnection.cpp \
-    src/mqtt/mqttconnectionrequest.cpp \
+    src/mqtt/mqttconnectioncommand.cpp \
     src/mqtt/mqttcontroller.cpp
 
 SOURCES_GUI = src/audiomixerboard.cpp \

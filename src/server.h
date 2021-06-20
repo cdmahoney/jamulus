@@ -167,6 +167,8 @@ public:
               const QString&     strRecordingDirName,
               const QString&     strMqttHostPub,
               const quint16      iMqttPortPub,
+              const QString&     strMqttHostSub,
+              const quint16      iMqttPortSub,
               const bool         bNDisconnectAllClientsOnQuit,
               const bool         bNUseDoubleSystemFrameSize,
               const bool         bNUseMultithreading,

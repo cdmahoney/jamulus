@@ -91,6 +91,8 @@ int main ( int argc, char** argv )
     QString      strClientName               = "";
     QString      strMqttHostPub              = "";
     quint16      iMqttPortPub                = DEFAULT_MQTTPORTPUB_NUMBER;
+    QString      strMqttHostSub              = "";
+    quint16      iMqttPortSub                = DEFAULT_MQTTPORTSUB_NUMBER;
 
 #if !defined( HEADLESS ) && defined( _WIN32 )
     if ( AttachConsole ( ATTACH_PARENT_PROCESS ) )
@@ -331,8 +333,31 @@ int main ( int argc, char** argv )
         if ( GetNumericArgument ( argc, argv, i, "--mqttportpub", "--mqttportpub", 0, 65535, rDbleArgument ) )
         {
             iMqttPortPub = static_cast<quint16> ( rDbleArgument );
-            qInfo() << qUtf8Printable ( QString ( "- mqtt port for publisg: %1" ).arg ( iMqttPortPub ) );
+            qInfo() << qUtf8Printable ( QString ( "- mqtt port for publish: %1" ).arg ( iMqttPortPub ) );
             CommandLineOptions << "--mqttportpub";
+            continue;
+        }
+
+        // MQTT host for subscriptions -----------------------------------------
+        if ( GetStringArgument ( argc,
+                                 argv,
+                                 i,
+                                 "--mqtthostsub", // no short form
+                                 "--mqtthostsub",
+                                 strArgument ) )
+        {
+            strMqttHostSub = strArgument;
+            qInfo() << "- mqtt host for subscription: " << strMqttHostSub << endl;
+            CommandLineOptions << "--mqtthostsub";
+            continue;
+        }
+
+        // MQTT port for subscriptions -----------------------------------------
+        if ( GetNumericArgument ( argc, argv, i, "--mqttportsub", "--mqttportsub", 0, 65535, rDbleArgument ) )
+        {
+            iMqttPortPub = static_cast<quint16> ( rDbleArgument );
+            qInfo() << qUtf8Printable ( QString ( "- mqtt port for subscriptions: %1" ).arg ( iMqttPortSub ) );
+            CommandLineOptions << "--mqttportsub";
             continue;
         }
 
@@ -678,6 +703,8 @@ int main ( int argc, char** argv )
                              strRecordingDirName,
                              strMqttHostPub,
                              iMqttPortPub,
+                             strMqttHostSub,
+                             iMqttPortSub,
                              bDisconnectAllClientsOnQuit,
                              bUseDoubleSystemFrameSize,
                              bUseMultithreading,
@@ -782,6 +809,8 @@ QString UsageArguments ( char** argv )
            "  -m, --htmlstatus      enable HTML status file, set file name\n"
            "      --mqtthostpub     mqtt host for publishing state information\n"
            "      --mqttportpub     mqtt port for publishing state information. Default 1883\n"
+           "      --mqtthostsub     mqtt host for subscriptions to commands\n"
+           "      --mqttportsub     mqtt port for subscriptions to commands. Default 1883\n"
            "  -o, --serverinfo      infos of this server in the format:\n"
            "                        [name];[city];[country as QLocale ID]\n"
            "  -P, --delaypan        start with delay panning enabled\n"

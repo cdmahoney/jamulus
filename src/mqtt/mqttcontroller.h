@@ -36,14 +36,14 @@ namespace mqtt
 {
 
 class CMqttConnection;
-class CMqttConnectionRequest;
+class CMqttConnectionCommand;
 
 class CMqttController : public QObject
 {
     Q_OBJECT
 
 public:
-    explicit CMqttController ( CServer* server, const QString& mqttpub, quint16 iMqttPortPub );
+    explicit CMqttController ( CServer* server, const QString& mqttHostPub, quint16 iMqttPortPub, const QString& mqttHostSub, quint16 iMqttPortSub );
     virtual ~CMqttController();
 
     bool IsEnabled() const;
@@ -53,14 +53,16 @@ private:
     CHostAddress            mqttInetAddress;
     QThread*                pthMqttConnection;
     CMqttConnection*        pMqttConnection;
-    QThread*                pthMqttConnectionRequest;
-    CMqttConnectionRequest* pMqttConnectionRequest;
+    QThread*                pthMqttConnectionCommand;
+    CMqttConnectionCommand* pMqttConnectionCommand;
 
 signals:
     void EndConnectionThread();
 
     // MqttConnection control
-    void Connect ( const QString& mqttHost, quint16 mqttPort = 1883 );
+    void ConnectSub ( const QString& mqttHost, quint16 mqttPort = 1883 );
+    void ConnectPub ( const QString& mqttHost, quint16 mqttPort = 1883 );
+    // void Connect ( const QString& mqttHost, quint16 mqttPort = 1883 );
 
     // Proxied server signals
     void Started();
@@ -129,6 +131,9 @@ public slots:
     void OnProtcolMessageReceived ( int iRecCounter, int iRecID, CVector<uint8_t> vecbyMesBodyData, CHostAddress RecHostAddr );
     void OnServerStarted ( CServer* server, CServerListManager* serverListManager );
     void OnServerStopped ( CServer* server, CServerListManager* serverListManager );
+
+    void SetEnableRecording ( bool bNewEnableRecording ) const;
+    void RequestNewRecording() const;
 };
 
 } // namespace mqtt

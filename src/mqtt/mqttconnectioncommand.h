@@ -31,13 +31,13 @@
 namespace mqtt
 {
 
-class CMqttConnectionRequest : public CMqttConnectionJamulus
+class CMqttConnectionCommand : public CMqttConnectionJamulus
 {
     Q_OBJECT
 
 public:
-    CMqttConnectionRequest();
-    virtual ~CMqttConnectionRequest();
+    CMqttConnectionCommand();
+    virtual ~CMqttConnectionCommand();
 
 protected:
     virtual QString GetType() const;
@@ -45,6 +45,9 @@ protected:
 
 private:
 signals:
+    // Signals allow cross-thread safe activation of recording
+    void SetEnableRecording ( bool bNewEnableRecording );
+    void RequestNewRecording();
 
 public slots:
     void OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg );

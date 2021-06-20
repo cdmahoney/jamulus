@@ -25,114 +25,141 @@
 #include "../server.h"
 #include "mqttcontroller.h"
 #include "mqttconnection.h"
-#include "mqttconnectionrequest.h"
+#include "mqttconnectioncommand.h"
 
 using namespace mqtt;
 
-CMqttController::CMqttController ( CServer* server, const QString& mqttHostpub, quint16 mqttPortPub ) :
+CMqttController::CMqttController ( CServer*       server,
+                                   const QString& mqttHostPub,
+                                   quint16        iMqttPortPub,
+                                   const QString& mqttHostSub,
+                                   quint16        iMqttPortSub ) :
     pServer ( server ),
     mqttInetAddress(),
     pthMqttConnection ( nullptr ),
-    pMqttConnection ( new CMqttConnection() ),
-    pthMqttConnectionRequest ( nullptr ),
-    pMqttConnectionRequest ( new CMqttConnectionRequest() )
+    pMqttConnection ( nullptr ),
+    // pMqttConnection ( new CMqttConnection() ),
+    pthMqttConnectionCommand ( nullptr ),
+    pMqttConnectionCommand ( nullptr )
+// pMqttConnectionCommand ( new CMqttConnectionCommand() )
 {
-    pthMqttConnection = new QThread();
-    pthMqttConnection->setObjectName ( "MqttConnection" );
-    pMqttConnection->moveToThread ( pthMqttConnection );
+    if ( !mqttHostPub.isEmpty() )
+    {
+        pMqttConnection   = new CMqttConnection();
+        pthMqttConnection = new QThread();
+        pthMqttConnection->setObjectName ( "MqttConnection" );
+        pMqttConnection->moveToThread ( pthMqttConnection );
 
-    pthMqttConnectionRequest = new QThread();
-    pthMqttConnectionRequest->setObjectName ( "MqttConnectionRequest" );
-    pMqttConnectionRequest->moveToThread ( pthMqttConnectionRequest );
+        // QT signals
+        QObject::connect ( pthMqttConnection, &QThread::finished, pMqttConnection, &QObject::deleteLater );
 
-    // QT signals
-    QObject::connect ( pthMqttConnection, &QThread::finished, pMqttConnection, &QObject::deleteLater );
+        QObject::connect ( QCoreApplication::instance(),
+                           &QCoreApplication::aboutToQuit,
+                           pMqttConnection,
+                           &CMqttConnection::OnAboutToQuit,
+                           Qt::ConnectionType::BlockingQueuedConnection );
 
-    QObject::connect ( QCoreApplication::instance(),
-                       &QCoreApplication::aboutToQuit,
-                       pMqttConnection,
-                       &CMqttConnection::OnAboutToQuit,
-                       Qt::ConnectionType::BlockingQueuedConnection );
+        QObject::connect ( this, &CMqttController::ConnectPub, pMqttConnection, &CMqttConnection::Connect );
+        // QObject::connect ( this, &CMqttController::Connect, pMqttConnection, &CMqttConnection::Connect );
 
-    QObject::connect ( this, &CMqttController::Connect, pMqttConnection, &CMqttConnection::Connect );
+        // from the controller to the connection
+        QObject::connect ( this,
+                           &CMqttController::EndRecorderThread,
+                           pMqttConnection,
+                           &CMqttConnection::OnEndRecorderThread,
+                           Qt::ConnectionType::BlockingQueuedConnection );
 
-    // from the controller to the connection
-    QObject::connect ( this,
-                       &CMqttController::EndRecorderThread,
-                       pMqttConnection,
-                       &CMqttConnection::OnEndRecorderThread,
-                       Qt::ConnectionType::BlockingQueuedConnection );
+        // Proxied from the server to the connection
+        QObject::connect ( this, &CMqttController::Started, pMqttConnection, &CMqttConnection::OnStarted );
 
-    // Proxied from the server to the connection
-    QObject::connect ( this, &CMqttController::Started, pMqttConnection, &CMqttConnection::OnStarted );
+        QObject::connect ( this, &CMqttController::Stopped, pMqttConnection, &CMqttConnection::OnStopped );
 
-    QObject::connect ( this, &CMqttController::Stopped, pMqttConnection, &CMqttConnection::OnStopped );
+        QObject::connect ( this, &CMqttController::ClientDisconnected, pMqttConnection, &CMqttConnection::OnClientDisconnected );
 
-    QObject::connect ( this, &CMqttController::ClientDisconnected, pMqttConnection, &CMqttConnection::OnClientDisconnected );
+        qRegisterMetaType<ESvrRegStatus> ( "ESvrRegStatus" );
+        QObject::connect ( this, &CMqttController::SvrRegStatusChanged, pMqttConnection, &CMqttConnection::OnSvrRegStatusChanged );
 
-    qRegisterMetaType<ESvrRegStatus> ( "ESvrRegStatus" );
-    QObject::connect ( this, &CMqttController::SvrRegStatusChanged, pMqttConnection, &CMqttConnection::OnSvrRegStatusChanged );
+        // qRegisterMetaType<CVector<int16_t>> ( "CVector<int16_t>" );
+        // QObject::connect( this, &CMqttController::AudioFrame,
+        //     pMqttConnection, &CMqttConnection::OnAudioFrame );
 
-    // qRegisterMetaType<CVector<int16_t>> ( "CVector<int16_t>" );
-    // QObject::connect( this, &CMqttController::AudioFrame,
-    //     pMqttConnection, &CMqttConnection::OnAudioFrame );
+        qRegisterMetaType<COSUtil::EOpSystemType> ( "COSUtil::EOpSystemType" );
+        QObject::connect ( this, &CMqttController::CLVersionAndOSReceived, pMqttConnection, &CMqttConnection::OnCLVersionAndOSReceived );
 
-    qRegisterMetaType<COSUtil::EOpSystemType> ( "COSUtil::EOpSystemType" );
-    QObject::connect ( this, &CMqttController::CLVersionAndOSReceived, pMqttConnection, &CMqttConnection::OnCLVersionAndOSReceived );
+        QObject::connect ( this, &CMqttController::CLPingReceived, pMqttConnection, &mqtt::CMqttConnection::OnCLPingReceived );
 
-    QObject::connect ( this, &CMqttController::CLPingReceived, pMqttConnection, &mqtt::CMqttConnection::OnCLPingReceived );
+        QObject::connect ( this, &CMqttController::RestartRecorder, pMqttConnection, &CMqttConnection::OnRestartRecorder );
 
-    QObject::connect ( this, &CMqttController::RestartRecorder, pMqttConnection, &CMqttConnection::OnRestartRecorder );
+        QObject::connect ( this, &CMqttController::StopRecorder, pMqttConnection, &CMqttConnection::OnStopRecorder );
 
-    QObject::connect ( this, &CMqttController::StopRecorder, pMqttConnection, &CMqttConnection::OnStopRecorder );
+        QObject::connect ( this, &CMqttController::RecordingSessionStarted, pMqttConnection, &CMqttConnection::OnRecordingSessionStarted );
 
-    QObject::connect ( this, &CMqttController::RecordingSessionStarted, pMqttConnection, &CMqttConnection::OnRecordingSessionStarted );
+        QObject::connect ( this, &CMqttController::EndRecorderThread, pMqttConnection, &CMqttConnection::OnEndRecorderThread );
 
-    QObject::connect ( this, &CMqttController::EndRecorderThread, pMqttConnection, &CMqttConnection::OnEndRecorderThread );
+        QObject::connect ( this, &CMqttController::ChanInfoHasChanged, pMqttConnection, &CMqttConnection::OnChanInfoHasChanged );
 
-    QObject::connect ( this, &CMqttController::ChanInfoHasChanged, pMqttConnection, &CMqttConnection::OnChanInfoHasChanged );
+        QObject::connect ( this, &CMqttController::NewConnection, pMqttConnection, &CMqttConnection::OnNewConnection );
 
-    QObject::connect ( this, &CMqttController::NewConnection, pMqttConnection, &CMqttConnection::OnNewConnection );
+        QObject::connect ( this, &CMqttController::ServerFull, pMqttConnection, &CMqttConnection::OnServerFull );
 
-    QObject::connect ( this, &CMqttController::ServerFull, pMqttConnection, &CMqttConnection::OnServerFull );
+        QObject::connect ( this, &CMqttController::ProtcolCLMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolCLMessageReceived );
 
-    QObject::connect ( this, &CMqttController::ProtcolCLMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolCLMessageReceived );
+        QObject::connect ( this, &CMqttController::ProtcolMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolMessageReceived );
 
-    QObject::connect ( this, &CMqttController::ProtcolMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolMessageReceived );
+        // from the recorder to the server
+        // QObject::connect ( pJamRecorder, &CJamRecorder::RecordingSessionStarted,
+        //     this, &CJamController::RecordingSessionStarted );
 
-    // from the recorder to the server
-    // QObject::connect ( pJamRecorder, &CJamRecorder::RecordingSessionStarted,
-    //     this, &CJamController::RecordingSessionStarted );
+        QObject::connect ( this, &CMqttController::CLConnClientsListMesReceived, pMqttConnection, &CMqttConnection::OnCLConnClientsListMesReceived );
+        qRegisterMetaType<CServer*> ( "CServer" );
+        qRegisterMetaType<CServerListManager*> ( "CServerListManager" );
+        QObject::connect ( this, &CMqttController::ServerStarted, pMqttConnection, &CMqttConnection::OnServerStarted );
+        QObject::connect ( this, &CMqttController::ServerStopped, pMqttConnection, &CMqttConnection::OnServerStopped );
 
-    QObject::connect ( this, &CMqttController::CLConnClientsListMesReceived, pMqttConnection, &CMqttConnection::OnCLConnClientsListMesReceived );
-    qRegisterMetaType<CServer*> ( "CServer" );
-    qRegisterMetaType<CServerListManager*> ( "CServerListManager" );
-    QObject::connect ( this, &CMqttController::ServerStarted, pMqttConnection, &CMqttConnection::OnServerStarted );
-    QObject::connect ( this, &CMqttController::ServerStopped, pMqttConnection, &CMqttConnection::OnServerStopped );
+        pthMqttConnection->start ( QThread::NormalPriority );
+        emit ConnectPub ( mqttHostPub, iMqttPortPub );
+    }
 
-    QObject::connect ( pthMqttConnectionRequest, &QThread::finished, pMqttConnectionRequest, &QObject::deleteLater );
+    if ( !mqttHostSub.isEmpty() )
+    {
+        pMqttConnectionCommand   = new CMqttConnectionCommand();
+        pthMqttConnectionCommand = new QThread();
+        pthMqttConnectionCommand->setObjectName ( "MqttConnectionCommand" );
+        pMqttConnectionCommand->moveToThread ( pthMqttConnectionCommand );
 
-    QObject::connect ( QCoreApplication::instance(),
-                       &QCoreApplication::aboutToQuit,
-                       pMqttConnectionRequest,
-                       &CMqttConnectionRequest::OnAboutToQuit,
-                       Qt::ConnectionType::BlockingQueuedConnection );
+        QObject::connect ( pthMqttConnectionCommand, &QThread::finished, pMqttConnectionCommand, &QObject::deleteLater );
 
-    QObject::connect ( this, &CMqttController::Connect, pMqttConnectionRequest, &CMqttConnectionRequest::Connect );
+        QObject::connect ( QCoreApplication::instance(),
+                           &QCoreApplication::aboutToQuit,
+                           pMqttConnectionCommand,
+                           &CMqttConnectionCommand::OnAboutToQuit,
+                           Qt::ConnectionType::BlockingQueuedConnection );
 
-    // Proxied from the server to the connection
-    QObject::connect ( this, &CMqttController::Started, pMqttConnectionRequest, &CMqttConnectionRequest::OnStarted );
-    QObject::connect ( this, &CMqttController::Stopped, pMqttConnectionRequest, &CMqttConnectionRequest::OnStopped );
+        QObject::connect ( this, &CMqttController::ConnectSub, pMqttConnectionCommand, &CMqttConnectionCommand::Connect );
 
-    QObject::connect ( this, &CMqttController::ServerStarted, pMqttConnectionRequest, &CMqttConnectionRequest::OnServerStarted );
-    QObject::connect ( this, &CMqttController::ServerStopped, pMqttConnectionRequest, &CMqttConnectionRequest::OnServerStopped );
+        // Proxied from the server to the connection
+        QObject::connect ( this, &CMqttController::Started, pMqttConnectionCommand, &CMqttConnectionCommand::OnStarted );
+        QObject::connect ( this, &CMqttController::Stopped, pMqttConnectionCommand, &CMqttConnectionCommand::OnStopped );
 
-    pthMqttConnection->start ( QThread::NormalPriority );
-    pthMqttConnectionRequest->start ( QThread::NormalPriority );
-    emit Connect ( mqttHostpub, mqttPortPub );
+        QObject::connect ( this, &CMqttController::ServerStarted, pMqttConnectionCommand, &CMqttConnectionCommand::OnServerStarted );
+        QObject::connect ( this, &CMqttController::ServerStopped, pMqttConnectionCommand, &CMqttConnectionCommand::OnServerStopped );
+
+        QObject::connect ( pMqttConnectionCommand, &CMqttConnectionCommand::SetEnableRecording, this, &CMqttController::SetEnableRecording );
+        QObject::connect ( pMqttConnectionCommand, &CMqttConnectionCommand::RequestNewRecording, this, &CMqttController::RequestNewRecording );
+
+        pthMqttConnectionCommand->start ( QThread::NormalPriority );
+
+        emit ConnectSub ( mqttHostSub, iMqttPortSub );
+    }
 }
 
-CMqttController::~CMqttController() {}
+CMqttController::~CMqttController()
+{
+    delete pMqttConnection;
+    delete pthMqttConnection;
+    delete pMqttConnectionCommand;
+    delete pthMqttConnectionCommand;
+}
 
 bool CMqttController::IsEnabled() const { return true; }
 
@@ -195,3 +222,6 @@ void CMqttController::OnProtcolMessageReceived ( int iRecCounter, int iRecID, CV
 void CMqttController::OnServerStarted ( CServer* server, CServerListManager* serverListManager ) { emit ServerStarted ( server, serverListManager ); }
 
 void CMqttController::OnServerStopped ( CServer* server, CServerListManager* serverListManager ) { emit ServerStopped ( server, serverListManager ); }
+
+void CMqttController::SetEnableRecording ( bool bNewEnableRecording ) const { pServer->SetEnableRecording ( bNewEnableRecording ); }
+void CMqttController::RequestNewRecording() const { pServer->RequestNewRecording(); }

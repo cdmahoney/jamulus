@@ -43,7 +43,7 @@ using namespace mqtt;
 
 namespace
 {
-QString getTopicString ( CServerListManager* serverListManager, const QString& prefix, const QString& suffix )
+QString getTopicString ( CServerListManager* serverListManager, const QString& prefix, const QString& type, const QString& suffix )
 {
     QString sport ( "0" );
     if ( serverListManager )
@@ -51,9 +51,20 @@ QString getTopicString ( CServerListManager* serverListManager, const QString& p
         const CServerListEntry* serverInfo = serverListManager->GetServerInfo();
         sport                              = QString::number ( serverInfo->LHostAddr.iPort );
     }
-    QString result = prefix + "/" + sport + "/" + suffix;
+    QString result = prefix + "/" + sport + "/" + type + "/" + suffix;
     return result;
 }
+// QString getTopicString ( CServerListManager* serverListManager, const QString& prefix, const QString& suffix )
+// {
+//     QString sport ( "0" );
+//     if ( serverListManager )
+//     {
+//         const CServerListEntry* serverInfo = serverListManager->GetServerInfo();
+//         sport                              = QString::number ( serverInfo->LHostAddr.iPort );
+//     }
+//     QString result = prefix + "/" + sport + "/" + suffix;
+//     return result;
+// }
 
 // // TEST - write to file
 // QFile File ( "D:\\CDM\\Projects\\Jamulus\\20201111\\build-Jamulus-Desktop_Qt_5_15_2_MinGW_64_bit-Debug\\debug\\logs\\qtservermqttbase.log" );
@@ -102,19 +113,47 @@ bool CMqttConnectionJamulus::IsDisconnected() const
 
 QMqttTopicName CMqttConnectionJamulus::GetTopicName ( const QString& prefix, const QString& suffix ) const
 {
-    QString        topic ( getTopicString ( ServerListManager, prefix, suffix ) );
+    // CDM
+    QString topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
+    // QString        topic ( getTopicString ( ServerListManager, prefix, suffix ) );
+    //
     QMqttTopicName result ( topic );
     return result;
 }
 
 QMqttTopicFilter CMqttConnectionJamulus::GetTopicFilter ( const QString& prefix, const QString& suffix ) const
 {
-    QString          topic ( getTopicString ( ServerListManager, prefix, suffix ) );
+    QString topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
+    // QString          topic ( getTopicString ( ServerListManager, prefix, suffix ) );
     QMqttTopicFilter result ( topic );
     return result;
 }
 
 void CMqttConnectionJamulus::OnMqttConnectedInternal() {}
+
+QJsonDocument CMqttConnectionJamulus::ParseJsonMessage ( QJsonObject& jsonObject, QMqttMessage message ) const
+{
+    // QJsonObject result;
+    // QJsonObject result = nullptr;
+    QJsonParseError parseError;
+    QJsonDocument   document = QJsonDocument::fromJson ( message.payload(), &parseError );
+    jsonObject["status"]     = parseError.error;
+    if ( parseError.error == QJsonParseError::NoError )
+    {
+        QJsonObject messageJson  = document.object();
+        QJsonValue  contextValue = messageJson["context"];
+        if ( contextValue.isObject() )
+        {
+            QJsonObject contextObject = contextValue.toObject();
+            jsonObject["context"]     = contextObject;
+        }
+    }
+    else
+    {
+        jsonObject["message"] = parseError.errorString();
+    }
+    return document;
+}
 
 void CMqttConnectionJamulus::HostAddressToJsonObject ( QJsonObject& jsonObject, CHostAddress hostAddress )
 {
@@ -368,30 +407,30 @@ void CMqttConnectionJamulus::OnMqttCleanSessionChanged ( bool /*cleanSession*/ )
 
 void CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg )
 {
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived - Topic: " + msg.topic().name() );
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived - Payload: " + msg.payload() );
-
     QMqttTopicFilter topicFilterPing ( "jamulus/ping" );
     if ( topicFilterPing.match ( msg.topic() ) )
     {
-        // _WriteString ( "CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived - ping received!" );
-
+        QJsonObject jsonObject;
+        // Parse message payload for json context
+        QJsonDocument messageDocument = ParseJsonMessage ( jsonObject, msg );
         if ( ServerListManager )
         {
             const CServerListEntry* serverInfo = ServerListManager->GetServerInfo();
             QString                 sport      = QString::number ( serverInfo->LHostAddr.iPort );
 
-            QJsonObject jsonObject;
+            // QJsonObject jsonObject;
             jsonObject["port"]    = sport;
             jsonObject["type"]    = GetType();
             jsonObject["name"]    = ServerListManager->GetServerName();
             jsonObject["city"]    = ServerListManager->GetServerCity();
             jsonObject["country"] = QLocale::countryToString ( ServerListManager->GetServerCountry() );
 
-            QMqttTopicName topicName ( "jamulus/pingack" );
-            QJsonDocument  jsonDocument ( jsonObject );
-            PublishMessage ( topicName, jsonDocument );
+            // QMqttTopicName topicName ( "jamulus/pingack" );
+            // QJsonDocument  jsonDocument ( jsonObject );
+            // PublishMessage ( topicName, jsonDocument );
         }
+        QMqttTopicName topicName ( "jamulus/pingack" );
+        PublishMessage ( topicName, jsonObject );
     }
 }
 

@@ -158,16 +158,15 @@ void CMqttConnection::OnMqttConnectedInternal()
 
 void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg )
 {
-    // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - Topic: " + msg.topic().name() );
-    // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - Payload: " + msg.payload() );
-
     QMqttTopicName topic ( msg.topic() );
 
     QMqttTopicFilter topicFilterGetConfiguration = GetTopicFilter ( "jamulus", "request/configuration/get/#" );
     if ( topicFilterGetConfiguration.match ( topic ) )
     {
-        // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - topic is configuration/get!" );
-        if ( Server && ServerListManager )
+        QJsonObject jsonObjectResult;
+        // Parse message payload for json context
+        QJsonDocument messageDocument = ParseJsonMessage ( jsonObjectResult, msg );
+        if ( Server && ServerListManager && !messageDocument.isNull() )
         {
             const CServerListEntry* serverInfo = ServerListManager->GetServerInfo();
 
@@ -200,27 +199,36 @@ void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& ms
             jsonObjectRecording["directory"]    = Server->GetRecordingDir();
             jsonObject["recording"]             = jsonObjectRecording;
 
-            QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
-            PublishMessage ( topicName, jsonObject );
+            jsonObjectResult["configuration"] = jsonObject;
+
+            // QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
+            // PublishMessage ( topicName, jsonObject );
         }
+        QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
+        PublishMessage ( topicName, jsonObjectResult );
     }
 
     QMqttTopicFilter topicFilterGetConnections = GetTopicFilter ( "jamulus", "request/connections/get/#" );
     if ( topicFilterGetConnections.match ( topic ) )
     {
-        // _WriteString ( "CMqttConnection::OnMqttSubscriptionMessageReceived - topic is connections/get!" );
-        if ( Server )
+        QJsonObject jsonObjectResult;
+        // Parse message payload for json context
+        QJsonDocument messageDocument = ParseJsonMessage ( jsonObjectResult, msg );
+        if ( Server && !messageDocument.isNull() )
         {
             CVector<CChannelInfo> vecChanInfo ( Server->CreateChannelList() );
 
-            QJsonObject jsonObject;
-            QJsonArray  channelArray;
+            // QJsonObject jsonObject;
+            QJsonArray channelArray;
             ChannelInfoVectorToJsonArray ( channelArray, vecChanInfo );
-            jsonObject["connections"] = channelArray;
+            jsonObjectResult["connections"] = channelArray;
 
-            QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
-            PublishMessage ( topicName, jsonObject );
+            // QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
+            // PublishMessage ( topicName, jsonObject );
         }
+
+        QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
+        PublishMessage ( topicName, jsonObjectResult );
     }
 }
 

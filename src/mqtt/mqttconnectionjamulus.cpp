@@ -150,7 +150,8 @@ QJsonDocument CMqttConnectionJamulus::ParseJsonMessage ( QJsonObject& jsonObject
     }
     else
     {
-        jsonObject["message"] = parseError.errorString();
+        jsonObject["message"]       = parseError.errorString();
+        jsonObject["contextString"] = QString ( message.payload() );
     }
     return document;
 }
@@ -410,27 +411,28 @@ void CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived ( const QMqttMess
     QMqttTopicFilter topicFilterPing ( "jamulus/ping" );
     if ( topicFilterPing.match ( msg.topic() ) )
     {
-        QJsonObject jsonObject;
+        QJsonObject jsonObjectResult;
         // Parse message payload for json context
-        QJsonDocument messageDocument = ParseJsonMessage ( jsonObject, msg );
-        if ( ServerListManager )
+        QJsonDocument messageDocument = ParseJsonMessage ( jsonObjectResult, msg );
+        if ( ServerListManager && !messageDocument.isNull() )
         {
             const CServerListEntry* serverInfo = ServerListManager->GetServerInfo();
             QString                 sport      = QString::number ( serverInfo->LHostAddr.iPort );
 
-            // QJsonObject jsonObject;
+            QJsonObject jsonObject;
             jsonObject["port"]    = sport;
             jsonObject["type"]    = GetType();
             jsonObject["name"]    = ServerListManager->GetServerName();
             jsonObject["city"]    = ServerListManager->GetServerCity();
             jsonObject["country"] = QLocale::countryToString ( ServerListManager->GetServerCountry() );
 
+            jsonObjectResult["server"] = jsonObject;
             // QMqttTopicName topicName ( "jamulus/pingack" );
             // QJsonDocument  jsonDocument ( jsonObject );
             // PublishMessage ( topicName, jsonDocument );
         }
         QMqttTopicName topicName ( "jamulus/pingack" );
-        PublishMessage ( topicName, jsonObject );
+        PublishMessage ( topicName, jsonObjectResult );
     }
 }
 

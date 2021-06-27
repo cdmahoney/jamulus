@@ -21,9 +21,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  *
 \******************************************************************************/
-// TEST
-// #include <QFile>
-
 #include <QMqttTopicName>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -80,18 +77,22 @@ void CMqttConnectionCommand::OnMqttSubscriptionMessageReceived ( const QMqttMess
                     if ( op == "toggle" )
                     {
                         emit SetEnableRecording ( !Server->GetRecordingEnabled() );
+                        jsonObject["op"] = op;
                     }
                     else if ( op == "start" )
                     {
                         emit SetEnableRecording ( true );
+                        jsonObject["op"] = op;
                     }
                     else if ( op == "stop" )
                     {
                         emit SetEnableRecording ( false );
+                        jsonObject["op"] = op;
                     }
                     else if ( op == "new" )
                     {
                         emit RequestNewRecording();
+                        jsonObject["op"] = op;
                     }
                 }
             }

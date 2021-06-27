@@ -53,11 +53,6 @@ signals:
 public slots:
     void OnClientDisconnected ( const int iChID );
     void OnSvrRegStatusChanged ( bool enabled, ESvrRegStatus regStatus, const QString& strStatus );
-    // void OnAudioFrame ( const int              iChID,
-    //                   const QString          stChName,
-    //                   const CHostAddress     RecHostAddr,
-    //                   const int              iNumAudChan,
-    //                   const CVector<int16_t> vecsData );
     void OnCLVersionAndOSReceived ( CHostAddress InetAddr, COSUtil::EOpSystemType eOSType, QString strVersion );
     void OnCLPingReceived ( CHostAddress inetAddr, int iMs );
     void OnRestartRecorder();

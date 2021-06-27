@@ -38,10 +38,8 @@ CMqttController::CMqttController ( CServer*       server,
     mqttInetAddress(),
     pthMqttConnection ( nullptr ),
     pMqttConnection ( nullptr ),
-    // pMqttConnection ( new CMqttConnection() ),
     pthMqttConnectionCommand ( nullptr ),
     pMqttConnectionCommand ( nullptr )
-// pMqttConnectionCommand ( new CMqttConnectionCommand() )
 {
     if ( !mqttHostPub.isEmpty() )
     {
@@ -60,7 +58,6 @@ CMqttController::CMqttController ( CServer*       server,
                            Qt::ConnectionType::BlockingQueuedConnection );
 
         QObject::connect ( this, &CMqttController::ConnectPub, pMqttConnection, &CMqttConnection::Connect );
-        // QObject::connect ( this, &CMqttController::Connect, pMqttConnection, &CMqttConnection::Connect );
 
         // from the controller to the connection
         QObject::connect ( this,
@@ -78,10 +75,6 @@ CMqttController::CMqttController ( CServer*       server,
 
         qRegisterMetaType<ESvrRegStatus> ( "ESvrRegStatus" );
         QObject::connect ( this, &CMqttController::SvrRegStatusChanged, pMqttConnection, &CMqttConnection::OnSvrRegStatusChanged );
-
-        // qRegisterMetaType<CVector<int16_t>> ( "CVector<int16_t>" );
-        // QObject::connect( this, &CMqttController::AudioFrame,
-        //     pMqttConnection, &CMqttConnection::OnAudioFrame );
 
         qRegisterMetaType<COSUtil::EOpSystemType> ( "COSUtil::EOpSystemType" );
         QObject::connect ( this, &CMqttController::CLVersionAndOSReceived, pMqttConnection, &CMqttConnection::OnCLVersionAndOSReceived );
@@ -105,10 +98,6 @@ CMqttController::CMqttController ( CServer*       server,
         QObject::connect ( this, &CMqttController::ProtcolCLMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolCLMessageReceived );
 
         QObject::connect ( this, &CMqttController::ProtcolMessageReceived, pMqttConnection, &CMqttConnection::OnProtcolMessageReceived );
-
-        // from the recorder to the server
-        // QObject::connect ( pJamRecorder, &CJamRecorder::RecordingSessionStarted,
-        //     this, &CJamController::RecordingSessionStarted );
 
         QObject::connect ( this, &CMqttController::CLConnClientsListMesReceived, pMqttConnection, &CMqttConnection::OnCLConnClientsListMesReceived );
         qRegisterMetaType<CServer*> ( "CServer" );
@@ -177,16 +166,6 @@ void CMqttController::OnSvrRegStatusChanged()
 
     emit SvrRegStatusChanged ( bCurSerListEnabled, eSvrRegStatus, strStatus );
 }
-
-// void CMqttController::OnAudioFrame (
-//     const int              iChID,
-//     const QString          stChName,
-//     const CHostAddress     RecHostAddr,
-//     const int              iNumAudChan,
-//     const CVector<int16_t> vecsData )
-// {
-//     emit AudioFrame(iChID, stChName, RecHostAddr, iNumAudChan, vecsData);
-// }
 
 void CMqttController::OnCLVersionAndOSReceived ( CHostAddress inetAddr, COSUtil::EOpSystemType eOSType, QString strVersion )
 {

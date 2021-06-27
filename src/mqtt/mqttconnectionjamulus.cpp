@@ -54,37 +54,6 @@ QString getTopicString ( CServerListManager* serverListManager, const QString& p
     QString result = prefix + "/" + sport + "/" + type + "/" + suffix;
     return result;
 }
-// QString getTopicString ( CServerListManager* serverListManager, const QString& prefix, const QString& suffix )
-// {
-//     QString sport ( "0" );
-//     if ( serverListManager )
-//     {
-//         const CServerListEntry* serverInfo = serverListManager->GetServerInfo();
-//         sport                              = QString::number ( serverInfo->LHostAddr.iPort );
-//     }
-//     QString result = prefix + "/" + sport + "/" + suffix;
-//     return result;
-// }
-
-// // TEST - write to file
-// QFile File ( "D:\\CDM\\Projects\\Jamulus\\20201111\\build-Jamulus-Desktop_Qt_5_15_2_MinGW_64_bit-Debug\\debug\\logs\\qtservermqttbase.log" );
-
-// QString _CurTimeDatetoLogString()
-// {
-//     // time and date to string conversion
-//     const QDateTime curDateTime = QDateTime::currentDateTime();
-
-//     // format date and time output according to "2006-09-30 11:38:08"
-//     return curDateTime.toString ( "yyyy-MM-dd HH:mm:ss" );
-// };
-
-// void _WriteString ( /*QFile& file, */ const QString& string )
-// {
-//     QTextStream out ( &File );
-//     // QTextStream out ( &file );
-//     out << _CurTimeDatetoLogString() << " " << string << endl;
-//     File.flush();
-// };
 }; // namespace
 
 /* ********************************************************************************************************
@@ -92,10 +61,7 @@ QString getTopicString ( CServerListManager* serverListManager, const QString& p
  * ********************************************************************************************************/
 
 CMqttConnectionJamulus::CMqttConnectionJamulus() : Server ( nullptr ), ServerListManager ( nullptr ), MqttClient ( nullptr ), AutoReconnect ( false )
-{
-    // TEST - write to file
-    // File.open ( QIODevice::Append | QIODevice::Text );
-}
+{}
 
 CMqttConnectionJamulus::~CMqttConnectionJamulus() {}
 
@@ -113,18 +79,14 @@ bool CMqttConnectionJamulus::IsDisconnected() const
 
 QMqttTopicName CMqttConnectionJamulus::GetTopicName ( const QString& prefix, const QString& suffix ) const
 {
-    // CDM
-    QString topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
-    // QString        topic ( getTopicString ( ServerListManager, prefix, suffix ) );
-    //
+    QString        topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
     QMqttTopicName result ( topic );
     return result;
 }
 
 QMqttTopicFilter CMqttConnectionJamulus::GetTopicFilter ( const QString& prefix, const QString& suffix ) const
 {
-    QString topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
-    // QString          topic ( getTopicString ( ServerListManager, prefix, suffix ) );
+    QString          topic ( getTopicString ( ServerListManager, prefix, GetType(), suffix ) );
     QMqttTopicFilter result ( topic );
     return result;
 }
@@ -133,8 +95,6 @@ void CMqttConnectionJamulus::OnMqttConnectedInternal() {}
 
 QJsonDocument CMqttConnectionJamulus::ParseJsonMessage ( QJsonObject& jsonObject, QMqttMessage message ) const
 {
-    // QJsonObject result;
-    // QJsonObject result = nullptr;
     QJsonParseError parseError;
     QJsonDocument   document = QJsonDocument::fromJson ( message.payload(), &parseError );
     jsonObject["status"]     = parseError.error;
@@ -164,8 +124,6 @@ void CMqttConnectionJamulus::HostAddressToJsonObject ( QJsonObject& jsonObject, 
 
 void CMqttConnectionJamulus::ChannelInfoVectorToJsonArray ( QJsonArray& jsonArray, CVector<CChannelInfo> vecChanInfo )
 {
-    // See:
-    //  https://doc.qt.io/qt-5/qtcore-serialization-savegame-example.html
     for ( const CChannelInfo& channelInfo : vecChanInfo )
     {
         QJsonObject channelObject;
@@ -268,7 +226,6 @@ void CMqttConnectionJamulus::Connect ( const QString& mqttHost, quint16 mqttPort
     if ( MqttClient == nullptr )
     {
         MqttClient = new QMqttClient ( this );
-        // MqttClient->setAutoKeepAlive(true);
 
         QObject::connect ( MqttClient, &QMqttClient::connected, this, &CMqttConnectionJamulus::OnMqttConnected );
         QObject::connect ( MqttClient, &QMqttClient::disconnected, this, &CMqttConnectionJamulus::OnMqttDisconnected );
@@ -308,29 +265,18 @@ void CMqttConnectionJamulus::Disconnect()
 
 void CMqttConnectionJamulus::OnServerStarted ( CServer* server, CServerListManager* serverListManager )
 {
-    // _WriteString ( "CMqttConnectionJamulus::OnServerStarted" );
     Server            = server;
     ServerListManager = serverListManager;
 }
-void CMqttConnectionJamulus::OnServerStopped ( CServer* /*server*/, CServerListManager* /*serverListManager*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnServerStopped" );
-}
-void CMqttConnectionJamulus::OnStarted()
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnStarted" );
-}
-void CMqttConnectionJamulus::OnStopped()
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnStopped" );
-}
+void CMqttConnectionJamulus::OnServerStopped ( CServer* /*server*/, CServerListManager* /*serverListManager*/ ) {}
+void CMqttConnectionJamulus::OnStarted() {}
+void CMqttConnectionJamulus::OnStopped() {}
 
 /**
  * @brief CMqttConnectionJamulus::OnAboutToQuit End any recording and exit thread
  */
 void CMqttConnectionJamulus::OnAboutToQuit()
 {
-    // _WriteString ( "CMqttConnectionJamulus::OnAboutToQuit" );
     if ( IsConnected() )
     {
         Disconnect();
@@ -341,70 +287,40 @@ void CMqttConnectionJamulus::OnAboutToQuit()
 
 void CMqttConnectionJamulus::OnMqttConnected()
 {
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttConnected" );
     QMqttTopicFilter   topicFilterPing ( "jamulus/ping" );
     QMqttSubscription* subscriptionPing = MqttClient->subscribe ( topicFilterPing );
 
     connect ( subscriptionPing, &QMqttSubscription::messageReceived, this, &CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived );
     connect ( subscriptionPing, &QMqttSubscription::stateChanged, this, &CMqttConnectionJamulus::OnMqttSubscriptionStateChanged );
-    // connect(subscriptionPing, &QMqttSubscription::qosChanged,
-    //     [this](quint8 qos)
-    //     {
-    //         _WriteString("CMqttConnectionJamulus::OnMqttConnected: " + QString::number(qos));
-    //     });
     OnMqttConnectedInternal();
 }
 
 void CMqttConnectionJamulus::OnMqttDisconnected()
 {
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttDisconnected" );
     if ( AutoReconnect )
     {
         MqttClient->connectToHost();
     }
 }
 
-void CMqttConnectionJamulus::OnMqttMessageReceived ( const QByteArray& /*message*/, const QMqttTopicName& /*topic*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttMessageReceived" );
-}
+void CMqttConnectionJamulus::OnMqttMessageReceived ( const QByteArray& /*message*/, const QMqttTopicName& /*topic*/ ) {}
 
 void CMqttConnectionJamulus::OnMqttMessageStatusChanged ( qint32 /*id*/,
                                                           QMqtt::MessageStatus /*s*/,
                                                           const QMqttMessageStatusProperties& /*properties*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttMessageStatusChanged: " + QString::number ( id ) );
-}
+{}
 
-void CMqttConnectionJamulus::OnMqttMessageSent ( qint32 /*id*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttMessageSent: " + QString::number ( id ) );
-}
+void CMqttConnectionJamulus::OnMqttMessageSent ( qint32 /*id*/ ) {}
 
-void CMqttConnectionJamulus::OnMqttPingResponseReceived()
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttPingResponseReceived" );
-}
+void CMqttConnectionJamulus::OnMqttPingResponseReceived() {}
 
-void CMqttConnectionJamulus::OnMqttBrokerSessionRestored()
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttBrokerSessionRestored" );
-}
+void CMqttConnectionJamulus::OnMqttBrokerSessionRestored() {}
 
-void CMqttConnectionJamulus::OnMqttStateChanged ( QMqttClient::ClientState /*state*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttStateChanged: " + QString::number ( state ) );
-}
+void CMqttConnectionJamulus::OnMqttStateChanged ( QMqttClient::ClientState /*state*/ ) {}
 
-void CMqttConnectionJamulus::OnMqttErrorChanged ( QMqttClient::ClientError /*error*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttErrorChanged: " + QString::number ( error ) );
-}
+void CMqttConnectionJamulus::OnMqttErrorChanged ( QMqttClient::ClientError /*error*/ ) {}
 
-void CMqttConnectionJamulus::OnMqttCleanSessionChanged ( bool /*cleanSession*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttCleanSessionChanged: " + QString::number ( cleanSession ) );
-}
+void CMqttConnectionJamulus::OnMqttCleanSessionChanged ( bool /*cleanSession*/ ) {}
 
 void CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived ( const QMqttMessage& msg )
 {
@@ -427,16 +343,10 @@ void CMqttConnectionJamulus::OnMqttSubscriptionMessageReceived ( const QMqttMess
             jsonObject["country"] = QLocale::countryToString ( ServerListManager->GetServerCountry() );
 
             jsonObjectResult["server"] = jsonObject;
-            // QMqttTopicName topicName ( "jamulus/pingack" );
-            // QJsonDocument  jsonDocument ( jsonObject );
-            // PublishMessage ( topicName, jsonDocument );
         }
         QMqttTopicName topicName ( "jamulus/pingack" );
         PublishMessage ( topicName, jsonObjectResult );
     }
 }
 
-void CMqttConnectionJamulus::OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState /*state*/ )
-{
-    // _WriteString ( "CMqttConnectionJamulus::OnMqttSubscriptionStateChanged: " + QString::number ( state ) );
-}
+void CMqttConnectionJamulus::OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState /*state*/ ) {}

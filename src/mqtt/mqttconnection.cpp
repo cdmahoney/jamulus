@@ -21,8 +21,6 @@
  * 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  *
 \******************************************************************************/
-// #include <QFile>
-
 #include <QMqttTopicName>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -39,107 +37,11 @@
 
 using namespace mqtt;
 
-namespace
-{
-// QString getTopicString ( CServerListManager* serverListManager, const QString& prefix, const QString& suffix )
-// {
-//     QString sport ( "0" );
-//     if ( serverListManager )
-//     {
-//         const CServerListEntry* serverInfo = serverListManager->GetServerInfo();
-//         sport                              = QString::number ( serverInfo->LHostAddr.iPort );
-//     }
-//     QString result = prefix + "/" + sport + "/" + suffix;
-//     return result;
-// }
-// QMqttTopicName getTopicName ( CServerListManager* serverListManager, const QString& prefix, const QString& suffix )
-// {
-//     QString        topic ( getTopicString ( serverListManager, prefix, suffix ) );
-//     QMqttTopicName result ( topic );
-//     return result;
-// }
-// QMqttTopicFilter getTopicFilter(CServerListManager* serverListManager, const QString& prefix, const QString& suffix)
-// {
-//     QString topic(getTopicString(serverListManager, prefix, suffix));
-//     QMqttTopicFilter result(topic);
-//     return result;
-// }
-
-QString skillLevelToString ( ESkillLevel skillLevel )
-{
-    QString result;
-    switch ( skillLevel )
-    {
-    case SL_BEGINNER:
-        result = QCoreApplication::translate ( "CMusProfDlg", "Beginner" );
-        break;
-    case SL_INTERMEDIATE:
-        result = QCoreApplication::translate ( "CMusProfDlg", "Intermediate" );
-        break;
-    case SL_PROFESSIONAL:
-        result = QCoreApplication::translate ( "CMusProfDlg", "Expert" );
-        break;
-    case SL_NOT_SET:
-        result = QCoreApplication::translate ( "CMusProfDlg", "Unknown" );
-        break;
-    }
-    return result;
-}
-
-void channelInfoVectorToJsonArray ( QJsonArray& jsonArray, CVector<CChannelInfo> vecChanInfo )
-{
-    // See:
-    //  https://doc.qt.io/qt-5/qtcore-serialization-savegame-example.html
-    for ( const CChannelInfo& channelInfo : vecChanInfo )
-    {
-        QJsonObject channelObject;
-        channelObject["channelID"]      = channelInfo.iChanID;
-        channelObject["name"]           = channelInfo.strName;
-        channelObject["country"]        = QLocale::countryToString ( channelInfo.eCountry );
-        channelObject["countryCode"]    = channelInfo.eCountry;
-        channelObject["city"]           = channelInfo.strCity;
-        channelObject["instrument"]     = CInstPictures::GetName ( channelInfo.iInstrument );
-        channelObject["instrumentCode"] = channelInfo.iInstrument;
-        channelObject["skillLevel"]     = skillLevelToString ( channelInfo.eSkillLevel );
-        channelObject["skillLevelCode"] = channelInfo.eSkillLevel;
-        jsonArray.append ( channelObject );
-    }
-}
-void hostAddressToJsonObject ( QJsonObject& jsonObject, CHostAddress hostAddress )
-{
-    jsonObject["inetAddress"] = hostAddress.InetAddr.toString();
-    jsonObject["port"]        = hostAddress.iPort;
-}
-
-// TEST - write to file
-// QFile File ( "D:\\CDM\\Projects\\Jamulus\\20201111\\build-Jamulus-Desktop_Qt_5_15_2_MinGW_64_bit-Debug\\debug\\logs\\qtservermqtt.log" );
-
-// QString _CurTimeDatetoLogString()
-// {
-//     // time and date to string conversion
-//     const QDateTime curDateTime = QDateTime::currentDateTime();
-
-//     // format date and time output according to "2006-09-30 11:38:08"
-//     return curDateTime.toString ( "yyyy-MM-dd HH:mm:ss" );
-// };
-
-// void _WriteString ( /*QFile& file, */ const QString& string )
-// {
-//     QTextStream out ( &File );
-//     // QTextStream out ( &file );
-//     out << _CurTimeDatetoLogString() << " " << string << endl;
-//     File.flush();
-// };
-}; // namespace
-
 /* ********************************************************************************************************
  * CMqttConnection
  * ********************************************************************************************************/
 
-CMqttConnection::CMqttConnection() : CMqttConnectionJamulus()
-{
-    // File.open ( QIODevice::Append | QIODevice::Text );
-}
+CMqttConnection::CMqttConnection() : CMqttConnectionJamulus() {}
 
 CMqttConnection::~CMqttConnection() {}
 
@@ -151,7 +53,6 @@ QString CMqttConnection::GetType() const
 
 void CMqttConnection::OnMqttConnectedInternal()
 {
-    // _WriteString ( "CMqttConnection::OnMqttConnectedInternal" );
     QMqttTopicFilter topicFilter = GetTopicFilter ( "jamulus", "request/#" );
     Subscribe ( topicFilter, &CMqttConnection::OnMqttSubscriptionMessageReceived, &CMqttConnection::OnMqttSubscriptionStateChanged );
 }
@@ -176,11 +77,11 @@ void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& ms
 
             // CServerInfo
             QJsonObject jsonObjectInternetAddress;
-            CMqttConnectionJamulus::HostAddressToJsonObject ( jsonObjectInternetAddress, serverInfo->HostAddr );
+            HostAddressToJsonObject ( jsonObjectInternetAddress, serverInfo->HostAddr );
             jsonObject["internetAddress"] = jsonObjectInternetAddress;
 
             QJsonObject jsonObjectInternalAddress;
-            CMqttConnectionJamulus::HostAddressToJsonObject ( jsonObjectInternalAddress, serverInfo->LHostAddr );
+            HostAddressToJsonObject ( jsonObjectInternalAddress, serverInfo->LHostAddr );
             jsonObject["internalAddress"] = jsonObjectInternalAddress;
 
             // CServerCoreInfo
@@ -200,9 +101,6 @@ void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& ms
             jsonObject["recording"]             = jsonObjectRecording;
 
             jsonObjectResult["configuration"] = jsonObject;
-
-            // QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
-            // PublishMessage ( topicName, jsonObject );
         }
         QMqttTopicName topicName = GetTopicName ( "jamulus", "response/configuration/get" );
         PublishMessage ( topicName, jsonObjectResult );
@@ -222,20 +120,13 @@ void CMqttConnection::OnMqttSubscriptionMessageReceived ( const QMqttMessage& ms
             QJsonArray channelArray;
             ChannelInfoVectorToJsonArray ( channelArray, vecChanInfo );
             jsonObjectResult["connections"] = channelArray;
-
-            // QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
-            // PublishMessage ( topicName, jsonObject );
         }
-
         QMqttTopicName topicName = GetTopicName ( "jamulus", "response/connections/get" );
         PublishMessage ( topicName, jsonObjectResult );
     }
 }
 
-void CMqttConnection::OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState /*state*/ )
-{
-    // _WriteString ( "CMqttConnection::OnMqttSubscriptionStateChanged: " + QString::number ( state ) );
-}
+void CMqttConnection::OnMqttSubscriptionStateChanged ( QMqttSubscription::SubscriptionState /*state*/ ) {}
 
 void CMqttConnection::OnClientDisconnected ( const int iChID )
 {
@@ -249,7 +140,6 @@ void CMqttConnection::OnClientDisconnected ( const int iChID )
 
 void CMqttConnection::OnSvrRegStatusChanged ( bool enabled, ESvrRegStatus regStatus, const QString& strStatus )
 {
-    // _WriteString ( "CMqttConnection::OnSvrRegStatusChanged" );
     QJsonObject jsonObject;
     jsonObject["enabled"]    = enabled;
     jsonObject["statusCode"] = regStatus;
@@ -258,20 +148,10 @@ void CMqttConnection::OnSvrRegStatusChanged ( bool enabled, ESvrRegStatus regSta
     QMqttTopicName topicName = GetTopicName ( "jamulus", "registration/status" );
     PublishOrQueueMessage ( topicName, jsonObject );
 }
-// void CMqttConnection::OnAudioFrame (
-//     const int              iChID,
-//     const QString          stChName,
-//     const CHostAddress     RecHostAddr,
-//     const int              iNumAudChan,
-//     const CVector<int16_t> vecsData )
-// {
-//     // _WriteString("CMqttConnection::OnAudioFrame");
-// }
 void CMqttConnection::OnCLVersionAndOSReceived ( CHostAddress inetAddr, COSUtil::EOpSystemType eOSType, QString strVersion )
 {
-    // _WriteString ( "CMqttConnection::OnCLVersionAndOSReceived" );
     QJsonObject jsonObjectHostAddress;
-    hostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
+    HostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
 
     QJsonObject jsonObject;
     jsonObject["hostAddress"] = jsonObjectHostAddress;
@@ -284,14 +164,13 @@ void CMqttConnection::OnCLVersionAndOSReceived ( CHostAddress inetAddr, COSUtil:
 }
 void CMqttConnection::OnCLPingReceived ( CHostAddress inetAddr, int iMs )
 {
-    // _WriteString ( "CMqttConnection::OnCLPingReceived" );
     static int previousMs = -1;
 
     // TODO - Remove this message? (triggers abround 2 messages/second)
     if ( previousMs != -1 )
     {
         QJsonObject jsonObjectHostAddress;
-        hostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
+        HostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
 
         QJsonObject jsonObject;
         jsonObject["hostAddress"] = jsonObjectHostAddress;
@@ -307,7 +186,6 @@ void CMqttConnection::OnCLPingReceived ( CHostAddress inetAddr, int iMs )
 
 void CMqttConnection::OnRestartRecorder()
 {
-    // _WriteString ( "CMqttConnection::OnRestartRecorder" );
     QJsonObject jsonObject;
 
     QMqttTopicName topicName = GetTopicName ( "jamulus", "recording/restart" );
@@ -316,7 +194,6 @@ void CMqttConnection::OnRestartRecorder()
 
 void CMqttConnection::OnStopRecorder()
 {
-    // _WriteString ( "CMqttConnection::OnStopRecorder" );
     QJsonObject jsonObject;
     jsonObject["directory"] = RecordingDirectory;
 
@@ -327,7 +204,6 @@ void CMqttConnection::OnStopRecorder()
 
 void CMqttConnection::OnRecordingSessionStarted ( QString sessionDir )
 {
-    // _WriteString ( QString ( "CMqttConnection::OnRecordingSessionStarted: " + sessionDir ) );
     RecordingDirectory = sessionDir;
     QJsonObject jsonObject;
     jsonObject["directory"] = RecordingDirectory;
@@ -338,7 +214,6 @@ void CMqttConnection::OnRecordingSessionStarted ( QString sessionDir )
 
 void CMqttConnection::OnEndRecorderThread()
 {
-    // _WriteString ( "CMqttConnection::OnEndRecorderThread" );
     QJsonObject jsonObject;
     jsonObject["directory"] = RecordingDirectory;
 
@@ -348,9 +223,8 @@ void CMqttConnection::OnEndRecorderThread()
 
 void CMqttConnection::OnChanInfoHasChanged ( CVector<CChannelInfo> vecChanInfo )
 {
-    // _WriteString ( "CMqttConnection::OnChanInfoHasChanged" );
     QJsonArray channelArray;
-    channelInfoVectorToJsonArray ( channelArray, vecChanInfo );
+    ChannelInfoVectorToJsonArray ( channelArray, vecChanInfo );
 
     QMqttTopicName topicName = GetTopicName ( "jamulus", "channelinfo" );
     PublishOrQueueMessage ( topicName, channelArray );
@@ -358,9 +232,8 @@ void CMqttConnection::OnChanInfoHasChanged ( CVector<CChannelInfo> vecChanInfo )
 
 void CMqttConnection::OnNewConnection ( int iChID, CHostAddress recHostAddr )
 {
-    // _WriteString ( "CMqttConnection::OnNewConnection" );
     QJsonObject jsonObjectHostAddress;
-    hostAddressToJsonObject ( jsonObjectHostAddress, recHostAddr );
+    HostAddressToJsonObject ( jsonObjectHostAddress, recHostAddr );
 
     QJsonObject jsonObject;
     jsonObject["channelID"]   = iChID;
@@ -373,7 +246,7 @@ void CMqttConnection::OnNewConnection ( int iChID, CHostAddress recHostAddr )
 void CMqttConnection::OnServerFull ( CHostAddress recHostAddr )
 {
     QJsonObject jsonObjectHostAddress;
-    hostAddressToJsonObject ( jsonObjectHostAddress, recHostAddr );
+    HostAddressToJsonObject ( jsonObjectHostAddress, recHostAddr );
 
     QJsonObject jsonObject;
     jsonObject["hostAddress"] = jsonObjectHostAddress;
@@ -551,14 +424,11 @@ void CMqttConnection::OnProtcolMessageReceived ( int /*iRecCounter*/,
 
 void CMqttConnection::OnCLConnClientsListMesReceived ( CHostAddress inetAddr, CVector<CChannelInfo> vecChanInfo )
 {
-    // _WriteString ( "CMqttConnection::OnCLConnClientsListMesReceived" );
-    // See:
-    //  https://doc.qt.io/qt-5/qtcore-serialization-savegame-example.html
     QJsonArray channelArray;
-    channelInfoVectorToJsonArray ( channelArray, vecChanInfo );
+    ChannelInfoVectorToJsonArray ( channelArray, vecChanInfo );
 
     QJsonObject jsonObjectHostAddress;
-    hostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
+    HostAddressToJsonObject ( jsonObjectHostAddress, inetAddr );
 
     QJsonObject jsonObject;
     jsonObject["hostAddress"] = jsonObjectHostAddress;

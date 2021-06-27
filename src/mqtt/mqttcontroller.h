@@ -69,11 +69,6 @@ signals:
     void Stopped();
     void ClientDisconnected ( const int iChID );
     void SvrRegStatusChanged ( bool enabled, ESvrRegStatus regStatus, const QString& strStatus );
-    // void AudioFrame ( const int              iChID,
-    //                   const QString          stChName,
-    //                   const CHostAddress     RecHostAddr,
-    //                   const int              iNumAudChan,
-    //                   const CVector<int16_t> vecsData );
     void CLVersionAndOSReceived ( CHostAddress InetAddr, COSUtil::EOpSystemType eOSType, QString strVersion );
     void CLPingReceived ( CHostAddress inetAddr, int iMs );
     void RestartRecorder();
@@ -82,7 +77,6 @@ signals:
     void EndRecorderThread();
 
     // Proxied socket signals
-    // void NewConnection(); // for the client
     void NewConnection ( int          iChID,
                          CHostAddress RecHostAddr ); // for the server
     void ServerFull ( CHostAddress RecHostAddr );
@@ -106,11 +100,6 @@ public slots:
     void OnStopped();
     void OnClientDisconnected ( const int iChID );
     void OnSvrRegStatusChanged();
-    // void OnAudioFrame ( const int              iChID,
-    //                   const QString          stChName,
-    //                   const CHostAddress     RecHostAddr,
-    //                   const int              iNumAudChan,
-    //                   const CVector<int16_t> vecsData );
     void OnCLVersionAndOSReceived ( CHostAddress InetAddr, COSUtil::EOpSystemType eOSType, QString strVersion );
     void OnCLPingReceived ( CHostAddress inetAddr, int iMs );
     void OnRestartRecorder();
@@ -122,7 +111,6 @@ public slots:
     void OnChanInfoHasChanged ( CVector<CChannelInfo> vecChanInfo );
 
     // Socket signals
-    // void OnNewConnection(); // for the client
     void OnNewConnection ( int          iChID,
                            CHostAddress RecHostAddr ); // for the server
     void OnServerFull ( CHostAddress RecHostAddr );
